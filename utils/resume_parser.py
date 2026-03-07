@@ -1,15 +1,31 @@
-import pdfplumber
-import docx
+@app.post("/parse-resume")
+def parse_resume():
 
-def extract_text_from_pdf(file_path):
-    text = ""
-    with pdfplumber.open(file_path) as pdf:
-        for page in pdf.pages:
-            text += page.extract_text() + "\n"
-    return text
+    resume_text = """
+    Suraj Gavali
+    Software Developer
+    Skills: Python, FastAPI, Angular, SQL, Docker
+    Experience: 3 years backend development
+    """
 
+    prompt = f"""
+    Extract the following information from the resume.
 
-def extract_text_from_docx(file_path):
-    doc = docx.Document(file_path)
-    text = "\n".join([para.text for para in doc.paragraphs])
-    return text
+    Return JSON only.
+
+    Fields:
+    - skills
+    - years_of_experience
+    - technologies
+    - job_roles
+
+    Resume:
+    {resume_text}
+    """
+
+    response = ollama.chat(
+        model="phi3",
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    return {"result": response["message"]["content"]}

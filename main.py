@@ -1,19 +1,19 @@
 from fastapi import FastAPI, UploadFile, File
 import shutil
 import os
-from dotenv import load_dotenv
-from openai import OpenAI
+import ollama
 
-from utils.resume_parser import extract_text_from_pdf, extract_text_from_docx
-
-load_dotenv()
-
-client = OpenAI()
+from utils.parser import extract_text_from_pdf, extract_text_from_docx
 
 app = FastAPI()
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+@app.get("/")
+def home():
+    return {"message": "Resume AI Parser running"}
 
 
 @app.post("/parse-resume")
@@ -27,35 +27,24 @@ async def parse_resume(file: UploadFile = File(...)):
     # Extract text
     if file.filename.endswith(".pdf"):
         resume_text = extract_text_from_pdf(file_path)
+
     elif file.filename.endswith(".docx"):
         resume_text = extract_text_from_docx(file_path)
+
     else:
         return {"error": "Unsupported file format"}
 
     prompt = f"""
-    Extract the following information from this resume:
-
-    1. Skills
-    2. Years of experience
-    3. Technologies used
-    4. Previous job roles
-
-    Return JSON format.
-
+   Extract skills and years of experience from this resume. Return JSON only.
     Resume:
     {resume_text}
     """
 
-    response = client.chat.completions.create(
-        model="gpt-4.1-mini",
-        messages=[
-            {"role": "system", "content": "You are an expert resume parser."},
-            {"role": "user", "content": prompt}
-        ]
+    response = ollama.chat(
+        model="phi3",
+        messages=[{"role": "user", "content": prompt}],
+        stream=False
     )
-
-    result = response.choices[0].message.content
-
     return {
-        "parsed_data": result
+        "parsed_data": response["message"]["content"]
     }
